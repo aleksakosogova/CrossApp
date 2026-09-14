@@ -40,3 +40,5 @@ dotnet run --project src/Cli -- --json
 
 Розмір каталогу publish для linux-x64: 78,7 МБ
 
+updete
+
