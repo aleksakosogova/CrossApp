@@ -1,37 +1,51 @@
-﻿using Core.Dto;
+﻿using Core.Domain;
 using Core.Import;
+using Core.Dto;
+using Core.Services;
 
-string path = args.Length > 0 ? args[0] : Path.Combine("data", "sample.csv");
+Console.WriteLine("=== Сценарій 1: успіх, зміна статусу та сервіс двох сутностей ===");
+Product product = Product.Create("P-001", "sku-001", "Цемент М400 25кг", "шт", 100);
+Console.WriteLine(product);
 
-if (!File.Exists(path))
-{
-    Console.WriteLine($"Файл не знайдено: {Path.GetFullPath(path)}");
-    return 1;
-}
+product.RegisterArrival(50);
+product.ChangeStatus(ProductBatchStatus.Approved);
+Console.WriteLine(product);
 
-ImportResult<ProductDto> result = Path.GetExtension(path).ToLowerInvariant() switch
-{
-    ".json" => ProductJsonImporter.Load(path),
-    _ => ProductCsvImporter.Load(path)
-};
+// Перевірка інваріанту на дві сутності через сервіс
+Order order = new Order("ORD-555", "SKU-001", 30);
+OrderFulfillmentService.ValidateAndFulfill(product, order);
+Console.WriteLine($"Після виконання замовлення: {product}");
 
-Console.WriteLine($"Завантажено записів: {result.Items.Count}");
-foreach (ProductDto p in result.Items.Take(5))
-{
-    Console.WriteLine($" {p.Id,-6} {p.Sku,-10} {p.Name,-26} {p.Quantity,5} {p.Unit}");
-}
+Console.WriteLine();
+Console.WriteLine("=== Сценарій 2: порушення інваріантів ===");
+TryDo("недопустимий перехід статусу", () => product.ChangeStatus(ProductBatchStatus.Draft));
+TryDo("замовлення більше за залишок (дві сутності)", () => OrderFulfillmentService.ValidateAndFulfill(product, new Order("ORD-666", "SKU-001", 5000)));
+TryDo("порожній SKU", () => Product.Create("P-002", "", "Пісок", "т", 10));
 
-if (result.Errors.Count > 0)
-{
-    Console.WriteLine($"Пропущено рядків: {result.Errors.Count}");
-    foreach (string e in result.Errors)
+Console.WriteLine();
+Console.WriteLine("=== Сценарій 3: тестування імпорту ===");
+var mockImportResult = new ImportResult<ProductDto>(
+    new List<ProductDto>
     {
-        Console.WriteLine($" ! {e}");
+        new("P-100", "SKU-100", "Грунт", "міш", 50),
+        new("P-101", "", "Помилковий", "шт", 10)
+    },
+    new List<string>()
+);
+
+var (successList, failedList) = ProductDomainImporter.Import(mockImportResult);
+Console.WriteLine($"Успішно імпортовано: {successList.Count}");
+Console.WriteLine($"Відхилено через інваріанти: {failedList.Count}");
+
+static void TryDo(string title, Action action)
+{
+    try
+    {
+        action();
+        Console.WriteLine($"[ПОРУШЕННЯ] {title}: виняток НЕ спрацював!");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"{title}: {ex.GetType().Name} - {ex.Message}");
     }
 }
-
-int totalProcessed = result.Items.Count + result.Errors.Count;
-double errorPercentage = totalProcessed > 0 ? (double)result.Errors.Count / totalProcessed * 100 : 0;
-Console.WriteLine($"\n[Статистика імпорту]: Усього: {totalProcessed} | Прийнято: {result.Items.Count} | Пропущено: {result.Errors.Count} | Помилок: {errorPercentage:F1}%");
-
-return 0;
