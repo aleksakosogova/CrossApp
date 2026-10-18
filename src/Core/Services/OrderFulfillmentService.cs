@@ -48,4 +48,17 @@ public class OrderFulfillmentService
     // Крок 7: Func замість події для отримання значення
     public IReadOnlyList<Order> FindAll(IEnumerable<Order> orders, Func<Order, bool> predicate) =>
         orders.Where(predicate).ToList();
+// Додаткове завдання 2: Action<string> як параметр методу імпорту
+    public void ImportOrders(string[] data, Action<string> onLineSkipped)
+    {
+        foreach (var line in data)
+        {
+            if (string.IsNullOrWhiteSpace(line))
+            {
+                onLineSkipped("Порожній рядок"); // Викликаємо делегат для пропущеного рядка
+                continue;
+            }
+            // Тут могла б бути логіка створення замовлення на основі рядка
+        }
+    }
 }
