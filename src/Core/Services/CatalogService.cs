@@ -1,0 +1,23 @@
+namespace Core.Services;
+using Core.Abstractions;
+using Core.Domain;
+
+public sealed class CatalogService(ICatalogStore store)
+{
+    private readonly ICatalogStore _store = store ?? throw new ArgumentNullException(nameof(store));
+    public Product Add(string sku, string name, string unit, int quantity)
+    {
+        var product = Product.Create(Guid.NewGuid().ToString("N")[..8], sku, name, unit, quantity);
+        _store.Add(product);
+        return product;
+    }
+    public void Receive(string id, int quantity)
+    {
+        var product = _store.GetById(id) ?? throw new InvalidOperationException($"Немає запису з id={id}.");
+        product.RegisterArrival(quantity);
+        _store.Update(product);
+    }
+    public IReadOnlyList<Product> All() => _store.List();
+    public Product? Find(string id) => _store.GetById(id);
+    public IReadOnlyList<Product> Search(Func<Product, bool> predicate) => _store.Find(predicate);
+}
