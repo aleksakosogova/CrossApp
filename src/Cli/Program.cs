@@ -1,92 +1,63 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
+﻿using Core;
+using Core.Reports;
 using Core.Domain;
-using Core.Events;
-using Core.Services;
-using Core.Sinks;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 
-namespace Cli;
+// Отримуємо товари з SampleData
+var items = SampleData.GetProducts();
 
-// Додаткове завдання 1: Реалізація ConsoleSink
-public class ConsoleSink : INotificationSink
+var command = args.FirstOrDefault(a => !a.StartsWith("--")) ?? "report-top";
+
+switch (command)
 {
-    public void Notify(string message) => Console.WriteLine(message);
+    case "report-top":
+        Print(ReportService.TopByQuantity(items, 5));
+        break;
+
+    case "report-low":
+        Print(ReportService.LowStock(items, 10));
+        break;
+
+    case "report-groups":
+        foreach (var g in ReportService.ByUnit(items))
+        {
+            Console.WriteLine($"Одиниця: {g.Key,-6} | Позицій: {g.Count,3} | Сумарно: {g.TotalQuantity,6}");
+        }
+        break;
+
+    case "report-sum":
+        var t = ReportService.Totals(items);
+        Console.WriteLine($"Всього позицій: {t.Items}, сумарно: {t.Total}, середнє: {t.Average:F2}, макс: {t.Max}");
+        break;
+
+    case "demo-deferred":
+        RunDeferredExecutionDemo();
+        break;
+
+    default:
+        Console.WriteLine("Доступні команди: report-top | report-low | report-groups | report-sum | demo-deferred");
+        break;
 }
 
-// Додаткове завдання 1: Реалізація FileSink (записує повідомлення від Sink у файл)
-public class FileSink : INotificationSink
+static void Print(IReadOnlyList<StockLine> lines)
 {
-    private readonly string _path;
-    public FileSink(string path) => _path = path;
-    public void Notify(string message) => File.AppendAllText(_path, message + Environment.NewLine);
-}
-
-class Program
-{
-    static void Main()
+    foreach (var l in lines)
     {
-        // Створення шляху до лог-файлу та папки
-        var logPath = Path.Combine(AppContext.BaseDirectory, "logs", "app.log");
-        Directory.CreateDirectory(Path.GetDirectoryName(logPath)!);
-
-        // Ініціалізація сервісу. Передаємо ConsoleSink, але можна замінити на new FileSink(logPath)
-        var service = new OrderFulfillmentService(new ConsoleSink());
-
-        // Крок 3: Локальний метод підписки
-        void OnOrderChanged(object? sender, OrderChangedEventArgs e)
-        {
-            var line = $"{e.At:HH:mm:ss} {e.Kind,-15} {e.OrderId} Зміна: {e.Delta,3} Залишок: {e.QuantityAfter}";
-            Console.WriteLine(line);
-            File.AppendAllText(logPath, line + Environment.NewLine);
-        }
-
-        // Підписка основного обробника
-        service.Changed += OnOrderChanged;
-
-        // Крок 4: Лямбда-лічильник (замикання)
-        int changes = 0;
-        service.Changed += delegate { changes++; };
-
-        // Створення сутностей через їхні правильні конструктори/фабрики
-        var product = Product.Create("PRD-001", "SKU-100", "Мишка", "шт", 50); 
-        var order1 = new Order("ORD-001", "SKU-100", 10);
-        var order2 = new Order("ORD-002", "SKU-100", 5);
-
-        Console.WriteLine("=== Успішний сценарій ===");
-        service.ValidateAndFulfill(product, order1);
-        Console.WriteLine($"Подій отримано: {changes}"); 
-
-        Console.WriteLine("\n=== Після відписки ===");
-        // Відписка основного обробника
-        service.Changed -= OnOrderChanged;
-        service.ValidateAndFulfill(product, order2);
-        Console.WriteLine($"Подій отримано: {changes}"); // Лямбда продовжує рахувати
-
-        Console.WriteLine("\n=== Сценарій відмови ===");
-        var invalidOrder = new Order("ORD-003", "SKU-100", 100);
-        try
-        {
-            // Інваріант викине виняток, подія не підніметься
-            service.ValidateAndFulfill(product, invalidOrder);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Помилка бізнес-логіки: {ex.Message}");
-        }
-
-        Console.WriteLine("\n=== Використання Func ===");
-        var ordersList = new List<Order> { order1, order2, invalidOrder };
-        // Використання Func для фільтрації колекції
-        var bigOrders = service.FindAll(ordersList, o => o.RequestedQuantity > 8);
-        foreach(var o in bigOrders)
-        {
-            Console.WriteLine($"Велике замовлення: {o.OrderId} (Кількість: {o.RequestedQuantity})");
-        }
-
-        Console.WriteLine("\n=== Додаткове завдання 2: Використання Action ===");
-        // Перевірка імпорту з викликом Action-делегата на порожніх рядках
-        string[] importData = { "ORD-010", "", "ORD-011", "  " };
-        service.ImportOrders(importData, error => Console.WriteLine($"Пропущено рядок при імпорті: {error}"));
+        Console.WriteLine($"{l.Sku,-10} {l.Name,-22} {l.Quantity,6} {l.Unit}");
     }
+}
+
+static void RunDeferredExecutionDemo()
+{
+    var source = SampleData.GetProducts().ToList();
+    var query = source.Where(p => p.Quantity < 10); // Запит побудовано, але ще НЕ виконано
+
+    Console.WriteLine($"Дефіцитних до змін: {query.Count()}");
+    
+    // Створюємо новий продукт через публічний фабричний метод Create замість new Product
+    source.Add(Product.Create(Guid.NewGuid().ToString("N")[..8], "SKU-999", "Скоба", "шт", 3)); 
+    
+    Console.WriteLine($"Дефіцитних після змін: {query.Count()}"); // Число змінилося завдяки відкладеному виконанню
 }

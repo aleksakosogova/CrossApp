@@ -9,7 +9,7 @@ public static class StoreFactory
     {
         bool useFile = args.Contains("--file");
         string dataPath = Path.Combine(AppContext.BaseDirectory, "data", "catalog.json");
-        ICatalogStore baseStore = useFile ? new FileCatalogStore(dataPath) : new InMemoryCatalogStore(SampleData.Products());
+        ICatalogStore baseStore = useFile ? new FileCatalogStore(dataPath) : new InMemoryCatalogStore(SampleData.GetProducts());
         return new CachingCatalogStore(baseStore);
     }
 }
