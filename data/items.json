@@ -1,0 +1,23 @@
+[
+  {
+    "id": "a1b2c3d4",
+    "sku": "MSE-Log-G304",
+    "name": "Бездротова миша Logitech G304 Lightspeed",
+    "unit": "шт",
+    "quantity": 40
+  },
+  {
+    "id": "b2c3d4e5",
+    "sku": "KB-Razer-Ornata",
+    "name": "Клавіатура Razer Ornata V3 X",
+    "unit": "шт",
+    "quantity": 25
+  },
+  {
+    "id": "c3d4e5f6",
+    "sku": "MP-Steel-Qck",
+    "name": "Килимок для миші SteelSeries QcK Large",
+    "unit": "шт",
+    "quantity": 60
+  }
+]

@@ -80,3 +80,27 @@ Query Syntax (`from ... group ... into`) є більш декларативни�
 4. Перевірка кооперативного скасування:
 
    Під час виконання імпорту натисніть **`Ctrl + C`** для переривання операції. Консоль виведе: `Імпорт скасовано.`
+
+## Лабораторна робота 9: Шляхи, JSON, конфігурація, Secrets
+
+### Профілі конфігурації
+- **appsettings.json** — базові налаштування (шляхи до сховища, назва файлу, логування)[cite: 1, 2].
+- **appsettings.Development.json** — налаштування для середовища розробки[cite: 1, 2].
+
+### Таблиця ключів конфігурації
+| Ключ | Опис |
+| :--- | :--- |
+| `EnvironmentName` | Поточне активне середовище[cite: 4] |
+| `Storage:DataPath` | Шлях до каталогу з даними[cite: 2, 4] |
+| `Storage:FileName` | Назва файлу каталогу товарів[cite: 2, 4] |
+| `Logging:MinimumLevel` | Поріг виводу логів[cite: 2] |
+| `Integration:ApiKey` | Секрет інтеграції (читається з user-secrets)[cite: 6] |
+
+### Приклади запуску (зміна шляху через змінні середовища)
+- **PowerShell:**
+  ```powershell
+  $env:CROSSAPP_DATA_PATH="C:\data"; dotnet run --project src/Cli
+Bash:
+
+Bash
+CROSSAPP_DATA_PATH=/tmp/data dotnet run --project src/Cli

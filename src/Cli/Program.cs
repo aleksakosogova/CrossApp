@@ -1,59 +1,64 @@
-﻿using System;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using Core;
+﻿using System.Reflection;
+using Core.Configuration;
 using Core.Domain;
-using Core.Services;
 using Core.Storage;
+using Microsoft.Extensions.Configuration;
 
-// Ініціалізація зв'язаного токена для обробки Ctrl+C та опціонального тайм-ауту
-using var userCts = new CancellationTokenSource();
-Console.CancelKeyPress += (s, e) => 
-{ 
-    e.Cancel = true; 
-    userCts.Cancel(); 
+var envName = Environment.GetEnvironmentVariable("CROSSAPP_ENVIRONMENT") ?? "Development";
+
+var config = new ConfigurationBuilder()
+    .SetBasePath(AppContext.BaseDirectory)
+    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: false)
+    .AddJsonFile($"appsettings.{envName}.json", optional: true)
+    .AddUserSecrets(Assembly.GetExecutingAssembly(), optional: true)
+    .AddEnvironmentVariables(prefix: "CROSSAPP_")
+    .AddCommandLine(args)
+    .Build();
+
+var options = config.Get<AppOptions>() ?? new AppOptions();
+
+// Валідація налаштувань на старті (Додаткове завдання 1)
+if (string.IsNullOrWhiteSpace(options.Storage.DataPath))
+{
+    Console.Error.WriteLine("Помилка конфігурації: шлях DataPath не може бути порожнім.");
+    Environment.Exit(2);
+}
+
+if (string.IsNullOrWhiteSpace(options.Storage.FileName) || !options.Storage.FileName.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
+{
+    Console.Error.WriteLine("Помилка конфігурації: FileName має закінчуватися на .json.");
+    Environment.Exit(2);
+}
+
+// Перевизначення через командний рядок або змінні середовища (Додаткове завдання 2)
+var cliDataPath = config["data-path"] ?? config["Storage:DataPath"];
+var legacy = Environment.GetEnvironmentVariable("CROSSAPP_DATA_PATH");
+
+var finalDataPath = !string.IsNullOrWhiteSpace(cliDataPath) && cliDataPath != options.Storage.DataPath 
+    ? cliDataPath 
+    : (string.IsNullOrWhiteSpace(legacy) ? options.Storage.DataPath : legacy);
+
+var storageOptions = new StorageOptions
+{
+    DataPath = finalDataPath,
+    FileName = options.Storage.FileName
 };
 
-// Приклад зв'язаного токена з тайм-аутом (наприклад, 10 секунд на всю операцію)
-using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(userCts.Token, timeoutCts.Token);
+var fullPath = storageOptions.ResolveFullPath(AppContext.BaseDirectory);
+var apiKey = config["Integration:ApiKey"];
 
-try
-{
-    var dataPath = args.Length > 0 ? args[0] : "data/sample.json";
+Console.WriteLine($"Файл даних: {fullPath}");
+Console.WriteLine(apiKey is null ? "ApiKey: не заданий" : $"ApiKey: присутній, довжина {apiKey.Length}");
 
-    var store = new InMemoryCatalogStore();
-    var service = new CatalogService(store);
+var store = new FileCatalogStore(fullPath);
 
-    // Додаткове завдання 3: Підписник на прогрес (малює відсотки у консолі)
-    var progress = new Progress<int>(percent =>
-    {
-        Console.Write($"\rПрогрес імпорту: {percent}% ");
-    });
-
-    Console.WriteLine("Початок асинхронного імпорту...");
-    
-    // Використовуємо потоковий або звичайний імпорт із прогресом та токеном
-    var added = await service.ImportStreamAsync(new JsonCatalogImporter(), dataPath, progress, linkedCts.Token);
-    
-    Console.WriteLine($"\nІмпортовано записів: {added}");
-}
-catch (OperationCanceledException)
+// Перевірка аргументу export для демонстрації виводу як у методичці
+if (args.Contains("export") || args.Contains("-- export"))
 {
-    Console.WriteLine("\nІмпорт скасовано користувачем або за тайм-аутом.");
+    var items = store.List();
+    Console.WriteLine($"Експортовано {items.Count} записи.");
 }
-catch (DomainException ex)
+else
 {
-    Console.WriteLine($"\nДані відхилено: {ex.Message}");
-}
-catch (FileNotFoundException)
-{
-    var dataPath = args.Length > 0 ? args[0] : "data/sample.json";
-    Console.WriteLine($"\nФайл не знайдено: {dataPath}");
-}
-catch (Exception ex)
-{
-    Console.WriteLine($"\nСталася непередбачена технічна помилка: {ex.Message}");
+    Console.WriteLine("Конфігурацію та сховище успішно ініціалізовано.");
 }

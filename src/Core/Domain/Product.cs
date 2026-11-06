@@ -22,7 +22,6 @@ public sealed class Product
         _quantity = quantity;
     }
 
-    // Фабричний метод із перевіркою всіх інваріантів при створенні
     public static Product Create(string id, string sku, string name, string unit, int quantity)
     {
         if (string.IsNullOrWhiteSpace(id))
@@ -40,7 +39,6 @@ public sealed class Product
         return new Product(id.Trim(), sku.Trim().ToUpperInvariant(), name.Trim(), unit.Trim(), quantity);
     }
 
-    // Метод приходу товару
     public void RegisterArrival(int amount)
     {
         if (amount <= 0)
@@ -49,7 +47,6 @@ public sealed class Product
         _quantity += amount;
     }
 
-    // Метод видачі товару (перевірка стану)
     public void Issue(int amount)
     {
         if (amount <= 0)
@@ -61,7 +58,6 @@ public sealed class Product
         _quantity -= amount;
     }
 
-    // Зміна статусу партії з перевіркою переходів через switch-expression
     public void ChangeStatus(ProductBatchStatus newStatus)
     {
         bool isValidTransition = (Status, newStatus) switch
@@ -78,7 +74,6 @@ public sealed class Product
         Status = newStatus;
     }
 
-    // Мапінг у формат DTO і назад через фабрику для збереження перевірок
     public ProductDto ToDto() => new(Id, Sku, Name, Unit, Quantity);
 
     public static Product FromDto(ProductDto dto) =>
