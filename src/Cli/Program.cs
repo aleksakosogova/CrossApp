@@ -1,63 +1,59 @@
-﻿using Core;
-using Core.Reports;
-using Core.Domain;
-using System;
-using System.Collections.Generic;
+﻿using System;
+using System.IO;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using Core;
+using Core.Domain;
+using Core.Services;
+using Core.Storage;
 
-// Отримуємо товари з SampleData
-var items = SampleData.GetProducts();
+// Ініціалізація зв'язаного токена для обробки Ctrl+C та опціонального тайм-ауту
+using var userCts = new CancellationTokenSource();
+Console.CancelKeyPress += (s, e) => 
+{ 
+    e.Cancel = true; 
+    userCts.Cancel(); 
+};
 
-var command = args.FirstOrDefault(a => !a.StartsWith("--")) ?? "report-top";
+// Приклад зв'язаного токена з тайм-аутом (наприклад, 10 секунд на всю операцію)
+using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(userCts.Token, timeoutCts.Token);
 
-switch (command)
+try
 {
-    case "report-top":
-        Print(ReportService.TopByQuantity(items, 5));
-        break;
+    var dataPath = args.Length > 0 ? args[0] : "data/sample.json";
 
-    case "report-low":
-        Print(ReportService.LowStock(items, 10));
-        break;
+    var store = new InMemoryCatalogStore();
+    var service = new CatalogService(store);
 
-    case "report-groups":
-        foreach (var g in ReportService.ByUnit(items))
-        {
-            Console.WriteLine($"Одиниця: {g.Key,-6} | Позицій: {g.Count,3} | Сумарно: {g.TotalQuantity,6}");
-        }
-        break;
-
-    case "report-sum":
-        var t = ReportService.Totals(items);
-        Console.WriteLine($"Всього позицій: {t.Items}, сумарно: {t.Total}, середнє: {t.Average:F2}, макс: {t.Max}");
-        break;
-
-    case "demo-deferred":
-        RunDeferredExecutionDemo();
-        break;
-
-    default:
-        Console.WriteLine("Доступні команди: report-top | report-low | report-groups | report-sum | demo-deferred");
-        break;
-}
-
-static void Print(IReadOnlyList<StockLine> lines)
-{
-    foreach (var l in lines)
+    // Додаткове завдання 3: Підписник на прогрес (малює відсотки у консолі)
+    var progress = new Progress<int>(percent =>
     {
-        Console.WriteLine($"{l.Sku,-10} {l.Name,-22} {l.Quantity,6} {l.Unit}");
-    }
+        Console.Write($"\rПрогрес імпорту: {percent}% ");
+    });
+
+    Console.WriteLine("Початок асинхронного імпорту...");
+    
+    // Використовуємо потоковий або звичайний імпорт із прогресом та токеном
+    var added = await service.ImportStreamAsync(new JsonCatalogImporter(), dataPath, progress, linkedCts.Token);
+    
+    Console.WriteLine($"\nІмпортовано записів: {added}");
 }
-
-static void RunDeferredExecutionDemo()
+catch (OperationCanceledException)
 {
-    var source = SampleData.GetProducts().ToList();
-    var query = source.Where(p => p.Quantity < 10); // Запит побудовано, але ще НЕ виконано
-
-    Console.WriteLine($"Дефіцитних до змін: {query.Count()}");
-    
-    // Створюємо новий продукт через публічний фабричний метод Create замість new Product
-    source.Add(Product.Create(Guid.NewGuid().ToString("N")[..8], "SKU-999", "Скоба", "шт", 3)); 
-    
-    Console.WriteLine($"Дефіцитних після змін: {query.Count()}"); // Число змінилося завдяки відкладеному виконанню
+    Console.WriteLine("\nІмпорт скасовано користувачем або за тайм-аутом.");
+}
+catch (DomainException ex)
+{
+    Console.WriteLine($"\nДані відхилено: {ex.Message}");
+}
+catch (FileNotFoundException)
+{
+    var dataPath = args.Length > 0 ? args[0] : "data/sample.json";
+    Console.WriteLine($"\nФайл не знайдено: {dataPath}");
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"\nСталася непередбачена технічна помилка: {ex.Message}");
 }
