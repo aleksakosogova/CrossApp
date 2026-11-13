@@ -1,0 +1,29 @@
+@HostAddress = http://localhost:5080
+
+### Перевірка здоров'я сервісу
+GET {{HostAddress}}/health
+
+### Отримати список товарів
+GET {{HostAddress}}/api/products
+
+### Створити новий товар (201 Created)
+POST {{HostAddress}}/api/products
+Content-Type: application/json
+
+{
+  "sku": "A-100",
+  "name": "Цемент М400",
+  "unit": "мішок",
+  "quantity": 40
+}
+
+### Помилка валідації (400 Bad Request)
+POST {{HostAddress}}/api/products
+Content-Type: application/json
+
+{
+  "sku": "",
+  "name": "X",
+  "unit": "",
+  "quantity": -1
+}

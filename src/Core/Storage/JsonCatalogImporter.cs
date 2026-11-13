@@ -36,7 +36,7 @@ public sealed class JsonCatalogImporter : ICatalogImporter
         return result;
     }
 
-    // Атрибут [EnumeratorCancellation] тут працює коректно, бо це метод реалізації з тілом
+    // Атрибут [EnumeratorCancellation] тут працює коректно, бо це метод реалізації з тілом, додаткове
     public async IAsyncEnumerable<Product> LoadStreamAsync(string path, [EnumeratorCancellation] CancellationToken ct = default)
     {
         await using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, useAsync: true);

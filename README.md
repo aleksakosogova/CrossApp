@@ -104,3 +104,41 @@ Bash:
 
 Bash
 CROSSAPP_DATA_PATH=/tmp/data dotnet run --project src/Cli
+
+## Лабораторна робота 10: Minimal API, CRUD, OpenAPI (Scalar)
+
+Запуск веб-сервісу API:
+```bash
+dotnet run --project src/Api --urls http://localhost:5080
+Документація OpenAPI: http://localhost:5080/openapi/v1.json
+
+Інтерфейс Scalar UI: http://localhost:5080/scalar/v1[cite: 1, 4]
+
+Приклад запиту через curl:
+Bash
+curl -i -X POST http://localhost:5080/api/products \
+  -H "Content-Type: application/json" \
+  -d '{"sku":"A-100","name":"Цемент М400","unit":"мішок","quantity":40}'
+
+---
+
+### Звіт до лабораторної роботи №10
+
+1. **Таблиця маршрутів:**
+
+| Метод | Шлях | Тіло запиту (Request Body) | Коди відповідей (Response Status Codes) |
+| :--- | :--- | :--- | :--- |
+| **GET** | `/api/products` | — | `200 OK` |
+| **GET** | `/api/products/{id}` | — | `200 OK`, `404 Not Found` |
+| **GET** | `/api/products/low-stock?threshold=5` | — | `200 OK` |
+| **POST** | `/api/products` | `SaveProductRequest` (JSON) | `201 Created`, `400 Bad Request`[cite: 2] |
+| **PUT** | `/api/products/{id}` | `SaveProductRequest` (JSON) | `200 OK`, `404 Not Found`, `400 Bad Request` |
+| **DELETE** | `/api/products/{id}` | — | `204 No Content`, `404 Not Found`[cite: 2] |
+
+2. **Чому DTO окремо від доменної сутності:**
+   DTO (Data Transfer Object) повністю відокремлює зовнішній контракт HTTP-апі від внутрішньої доменної моделі. Це дозволяє захистити інваріанти сутностей, приховати приватні поля чи внутрішні зміни бази/структури даних і забезпечити стабільний JSON-контракт для клієнтів (наприклад, майбутнього Blazor-додатка)[cite: 1, 2].
+
+3. **Час життя сервісів у DI (Dependency Injection):**
+   - **Singleton:** Створюється один екземпляр сервісу на весь час роботи застосунку[cite: 2]. Ми обрали його для `InMemoryCatalogStore`, щоб збережений стан пам'яті (список товарів) не втрачався між різними HTTP-запитами.
+   - **Scoped:** Створюється один екземпляр на кожен окремий HTTP-запит[cite: 2].
+   - **Transient:** Новий екземпляр створюється щоразу при зверненні до контейнера[cite: 2].
