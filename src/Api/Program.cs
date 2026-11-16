@@ -1,35 +1,66 @@
-using Api.Filters;
-using Api.Middleware;
 using Api.Endpoints;
 using Core.Abstractions;
-using Core.Storage;
-using FluentValidation;
+using Infrastructure;
+using Infrastructure.Persistence;
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Реєстрація OpenAPI, ProblemDetails та сховища
-builder.Services.AddOpenApi();
-builder.Services.AddProblemDetails();
-builder.Services.AddSingleton<ICatalogStore, InMemoryCatalogStore>();
+// Конфігурація рядка підключення з абсолютним шляхом
+var raw = builder.Configuration.GetConnectionString("AppDb") ?? "Data Source=data/app.db";
+var csb = new SqliteConnectionStringBuilder(raw);
 
-// Реєстрація FluentValidation та обробника винятків (Додаткові завдання 2 та 3)
-builder.Services.AddValidatorsFromAssemblyContaining<Program>();
-builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+var isTesting = builder.Environment.IsEnvironment("Testing") || 
+                AppDomain.CurrentDomain.GetAssemblies().Any(a => a.GetName().Name?.Contains("Tests") == true);
+
+if (isTesting)
+{
+    // Генеруємо унікальну базу для кожного тестового запуску всередині папки data
+    var testDbName = $"test_app_{Guid.NewGuid()}.db";
+    var fullPath = Path.Combine(builder.Environment.ContentRootPath, "data", testDbName);
+    Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
+    csb.DataSource = fullPath;
+}
+else if (!Path.IsPathRooted(csb.DataSource))
+{
+    var full = Path.Combine(builder.Environment.ContentRootPath, csb.DataSource);
+    Directory.CreateDirectory(Path.GetDirectoryName(full)!);
+    csb.DataSource = full;
+}
+else
+{
+    Directory.CreateDirectory(Path.GetDirectoryName(csb.DataSource)!);
+}
+
+builder.Services.AddDbContext<AppDbContext>(o => o.UseSqlite(csb.ConnectionString));
+builder.Services.AddScoped<IAsyncCatalogStore, EfCatalogStore>();
+
+builder.Services.AddControllers();
+builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
-// Використання глобального обробника винятків та статусів
-app.UseExceptionHandler();
-app.UseStatusCodePages();
+// Автоматичне застосування міграцій при старті
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    if (app.Environment.IsDevelopment() || isTesting)
+    {
+        db.Database.Migrate();
+    }
+}
 
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
-    app.MapScalarApiReference(); //[cite: 1, 4]
+    app.MapScalarApiReference();
 }
 
-app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 app.MapProducts();
+app.MapControllers();
 
 app.Run();
+
+public partial class Program { }

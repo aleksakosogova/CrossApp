@@ -142,3 +142,28 @@ curl -i -X POST http://localhost:5080/api/products \
    - **Singleton:** Створюється один екземпляр сервісу на весь час роботи застосунку[cite: 2]. Ми обрали його для `InMemoryCatalogStore`, щоб збережений стан пам'яті (список товарів) не втрачався між різними HTTP-запитами.
    - **Scoped:** Створюється один екземпляр на кожен окремий HTTP-запит[cite: 2].
    - **Transient:** Новий екземпляр створюється щоразу при зверненні до контейнера[cite: 2].
+
+## Лабораторна робота 11: EF Core + SQLite
+
+### Рядок підключення
+Конфігурація бази даних у файлі `appsettings.json`:
+```json
+"ConnectionStrings": {
+  "AppDb": "Data Source=data/app.db"
+}
+Команди міграцій EF Core
+Створити нову міграцію:
+
+Bash
+dotnet ef migrations add <MigrationName> --project src/Infrastructure --startup-project src/Api
+Застосувати міграції до бази даних:
+
+Bash
+dotnet ef database update --project src/Infrastructure --startup-project src/Api
+Як скинути базу даних
+Видалити файл бази даних вручну або через консоль: data/app.db.
+
+Повторно застосувати міграції для створення чистої структури:
+
+Bash
+dotnet ef database update --project src/Infrastructure --startup-project src/Api
