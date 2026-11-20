@@ -1,0 +1,221 @@
+@page "/products"
+@rendermode InteractiveServer
+@implements IDisposable
+@inject ProductsApiClient Api
+
+<PageTitle>Товари</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1>Товари</h1>
+    <a class="btn btn-primary" href="/products/new">Додати</a>
+</div>
+
+<div class="row g-2 mb-3">
+    <div class="col-md-6">
+        <input type="text"
+               class="form-control"
+               placeholder="Пошук за артикулом, назвою або од. виміру..."
+               @bind="searchText"
+               @bind:event="oninput"
+               @onkeyup="OnSearchChanged" />
+    </div>
+    <div class="col-md-3">
+        <select class="form-select" @onchange="OnSortByChanged">
+            <option value="sku" selected="@(sortBy == "sku")">Сортувати: Артикул</option>
+            <option value="name" selected="@(sortBy == "name")">Сортувати: Назва</option>
+            <option value="quantity" selected="@(sortBy == "quantity")">Сортувати: Кількість</option>
+            <option value="unit" selected="@(sortBy == "unit")">Сортувати: Одиниця</option>
+        </select>
+    </div>
+    <div class="col-md-3">
+        <select class="form-select" @onchange="OnSortDirChanged">
+            <option value="asc" selected="@(sortDir == "asc")">За зростанням</option>
+            <option value="desc" selected="@(sortDir == "desc")">За спаданням</option>
+        </select>
+    </div>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(deleteError))
+{
+    <div class="alert alert-warning alert-dismissible" role="alert">
+        @deleteError
+        <button type="button" class="btn-close" @onclick="() => deleteError = null"></button>
+    </div>
+}
+
+@if (pendingDelete is not null)
+{
+    <div class="alert alert-secondary d-flex justify-content-between align-items-center" role="alert">
+        <div>
+            Підтвердити видалення товару <strong>@pendingDelete.Sku — @pendingDelete.Name</strong>?
+        </div>
+        <div class="d-flex gap-2">
+            <button type="button" class="btn btn-sm btn-danger" disabled="@deleting" @onclick="ConfirmDeleteAsync">
+                @(deleting ? "Видалення..." : "Так, видалити")
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" disabled="@deleting" @onclick="CancelDelete">
+                Скасувати
+            </button>
+        </div>
+    </div>
+}
+
+@if (error is not null)
+{
+    <div class="alert alert-danger" role="alert">@error</div>
+}
+else if (items is null)
+{
+    <p><em>Завантаження...</em></p>
+}
+else if (items.Count == 0)
+{
+    <p>Записів ще немає.</p>
+}
+else
+{
+    <table class="table table-striped table-hover align-middle">
+        <thead>
+            <tr>
+                <th>Артикул</th>
+                <th>Назва</th>
+                <th>К-сть</th>
+                <th>Од.</th>
+                <th class="text-end">Дії</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in items)
+            {
+                <tr>
+                    <td>@item.Sku</td>
+                    <td>@item.Name</td>
+                    <td>@item.Quantity</td>
+                    <td>@item.Unit</td>
+                    <td class="text-end">
+                        <div class="d-inline-flex gap-1">
+                            <a class="btn btn-sm btn-outline-secondary" href="@($"/products/{item.Id}")">Редагувати</a>
+                            <button type="button" class="btn btn-sm btn-outline-danger" @onclick="() => RequestDelete(item)">Видалити</button>
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<global::Contracts.ProductDto>? items;
+    private string? error;
+    private string? deleteError;
+    private global::Contracts.ProductDto? pendingDelete;
+    private bool deleting;
+
+    private string searchText = string.Empty;
+    private string sortBy = "sku";
+    private string sortDir = "asc";
+
+    private CancellationTokenSource? _cts;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ReloadAsync();
+    }
+
+    private async Task OnSearchChanged(KeyboardEventArgs _)
+    {
+        await ReloadAsync();
+    }
+
+    private async Task OnSortByChanged(ChangeEventArgs e)
+    {
+        sortBy = e.Value?.ToString() ?? "sku";
+        await ReloadAsync();
+    }
+
+    private async Task OnSortDirChanged(ChangeEventArgs e)
+    {
+        sortDir = e.Value?.ToString() ?? "asc";
+        await ReloadAsync();
+    }
+
+    private async Task ReloadAsync()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _cts = new CancellationTokenSource();
+        var token = _cts.Token;
+
+        error = null;
+
+        try
+        {
+            var result = await Api.ListAsync(searchText, sortBy, sortDir, token);
+            if (!token.IsCancellationRequested)
+            {
+                items = result;
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (HttpRequestException)
+        {
+            if (!token.IsCancellationRequested)
+                error = "API недоступний. Перевірте, чи запущено src/Api.";
+        }
+        catch (Exception ex)
+        {
+            if (!token.IsCancellationRequested)
+                error = $"Помилка завантаження списку: {ex.Message}";
+        }
+    }
+
+    private void RequestDelete(global::Contracts.ProductDto item)
+    {
+        deleteError = null;
+        pendingDelete = item;
+    }
+
+    private void CancelDelete()
+    {
+        pendingDelete = null;
+    }
+
+    private async Task ConfirmDeleteAsync()
+    {
+        if (pendingDelete is null)
+            return;
+
+        deleting = true;
+        deleteError = null;
+        var target = pendingDelete;
+
+        try
+        {
+            var result = await Api.DeleteAsync(target.Id, _cts?.Token ?? CancellationToken.None);
+            if (result.Ok)
+            {
+                items?.RemoveAll(p => p.Id == target.Id);
+                pendingDelete = null;
+            }
+            else
+            {
+                deleteError = result.Message ?? "Не вдалося видалити запис.";
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        finally
+        {
+            deleting = false;
+        }
+    }
+
+    public void Dispose()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+    }
+}

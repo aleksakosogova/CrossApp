@@ -1,169 +1,94 @@
-CrossApp
+# CrossApp
+
 Наскрізний проєкт з крос-платформного програмування.
 
-Предметна область: Замовлення.
-Сутності: Customer (клієнт), Product (товар), Order (замовлення), OrderLine (рядок замовлення).
-Призначення: оформлення замовлень і підрахунок сум.
+Предметна область: Замовлення. Сутності: Customer (клієнт), Product (товар), Order (замовлення), OrderLine (рядок замовлення). Призначення: оформлення замовлень і підрахунок сум.
 
-Запуск
-dotnet build
-dotnet run --project src/Cli
+## Запуск та збірка
 
-Запуск із виводом у форматі JSON (додаткове завдання):
-dotnet run --project src/Cli -- --json
+- Збірка: `dotnet build`
+- Запуск консольного застосування: `dotnet run --project src/Cli`
+- Запуск із виводом у форматі JSON (додаткове завдання): `dotnet run --project src/Cli -- --json`
+- Середовище: `.NET SDK 10.0`, Windows 11 x64
 
-Середовище
-.NET SDK 10.0, Windows 11 x64
+## Додаткове завдання (Розміри publish)
 
-Додаткове завдання (Розміри publish)
-Розмір каталогу publish для win-x64: 76,8 МБ
+- Розмір каталогу `publish` для `win-x64`: `76,8 МБ`
+- Розмір каталогу `publish` для `linux-x64`: `78,7 МБ`
 
-Розмір каталогу publish для linux-x64: 78,7 МБ
+| RID | Режим | Розмір publish | Потрібен runtime |
+| :--- | :--- | :--- | :--- |
+| `win-x64` | `self-contained` | `~76.8 МБ` | ні |
+| `win-x64` | `framework-dependent` | `~196 КБ` | так (.NET 10) |
 
-## Порівняння режимів публікації (win-x64)
+## Лабораторна робота 4: Доменна модель (Сутності, інваріанти, інкапсуляція)
 
-|RID|Режим|Розмір publish|Потрібен runtime|
-|-|-|-|-|
-|win-x64|self-contained|\~76.8 МБ|ні|
-|win-x64|framework-dependent|\~196 КБ|так (.NET 10)|
+1. Обов'язковий ключ (SKU) та реквізити: Ідентифікатор, SKU та назва товару не можуть бути порожніми або складатися лише з пробілів (`ArgumentException`).
+2. Коректність кількості: Початковий залишок товару при створенні та параметри приходу/видачі не можуть бути від'ємними чи нульовими (`ArgumentOutOfRangeException`).
+3. Контроль стану при видачі: Операція видачі товару неможлива, якщо запитувана кількість перевищує поточний залишок на складі (`InvalidOperationException`).
 
-Лабораторна робота 4: Доменна модель (Сутності, інваріанти, інкапсуляція)
+## Лабораторна робота 7: LINQ to Objects
 
-
-
-Перелік реалізованих інваріантів:
-
-1\. Обов'язковий ключ (SKU) та реквізити: Ідентифікатор, SKU та назва товару не можуть бути порожніми або складатися лише з пробілів (`ArgumentException`)\[cite: 2, 4, 5].
-
-2\. Коректність кількості: Початковий залишок товару при створенні та параметри приходу/видачі не можуть бути від'ємними чи нульовими (`ArgumentOutOfRangeException`)\[cite: 2, 4, 5].
-
-3\. Контроль стану при видачі: Операція видачі товару неможлива, якщо запитувана кількість перевищує поточний залишок на складові (`InvalidOperationException`)\[cite: 2, 4, 5].
-
-# Лабораторна робота 7: LINQ to Objects
-
-## Порівняння синтаксису (Методний vs Query Syntax)
-Query Syntax (`from ... group ... into`) є більш декларативним і нагадує SQL, проте для складних ланцюжків із `ThenBy` та кількома проєкціями методний синтаксис (Method Syntax через лямбди) є більш гнучким і компактним у C#.
-
-## Відкладене виконання
-Запити (Where, Select) виконуються не в момент оголошення, а під час ітерації чи матеріалізації (ToList, Count()). Зміна джерела між оголошенням і викликом Count() впливає на результат.
+- Порівняння синтаксису (Методний vs Query Syntax): Query Syntax (`from ... group ... into`) більш декларативний і нагадує SQL, а для складних ланцюжків із `ThenBy` і проєкціями гнучкішим та компактнішим є Method Syntax через лямбди.
+- Відкладене виконання: Запити (`Where`, `Select`) виконуються під час ітерації або матеріалізації (`ToList`, `Count()`), тому зміна джерела між оголошенням і обчисленням впливає на результат.
 
 ## Лабораторна робота 8: async/await, скасування, доменні винятки, unit-тести Core
 
-
-
-### Як запустити тести та перевірити роботу:
-
-1. Запуск усіх модульних тестів:
-
-   ```bash
-
-   dotnet test
-
-   ```
-
-2. Звіт про покриття коду:
-
-   ```bash
-
-   dotnet test --collect:"XPlat Code Coverage"
-
-   ```
-
-3. Запуск консольного застосування з асинхронним імпортом:
-
-   ```bash
-
-   dotnet run --project src/Cli
-
-   ```
-
-4. Перевірка кооперативного скасування:
-
-   Під час виконання імпорту натисніть **`Ctrl + C`** для переривання операції. Консоль виведе: `Імпорт скасовано.`
+- Запуск усіх модульних тестів: `dotnet test`
+- Звіт про покриття коду: `dotnet test --collect:"XPlat Code Coverage"`
+- Запуск консольного застосування з асинхронним імпортом: `dotnet run --project src/Cli`
+- Перевірка кооперативного скасування: під час імпорту натиснути `Ctrl + C` для переривання операції.
 
 ## Лабораторна робота 9: Шляхи, JSON, конфігурація, Secrets
 
-### Профілі конфігурації
-- **appsettings.json** — базові налаштування (шляхи до сховища, назва файлу, логування)[cite: 1, 2].
-- **appsettings.Development.json** — налаштування для середовища розробки[cite: 1, 2].
+- `appsettings.json` — базові налаштування (шляхи до сховища, назва файлу, логування).
+- `appsettings.Development.json` — налаштування для середовища розробки.
 
-### Таблиця ключів конфігурації
 | Ключ | Опис |
 | :--- | :--- |
-| `EnvironmentName` | Поточне активне середовище[cite: 4] |
-| `Storage:DataPath` | Шлях до каталогу з даними[cite: 2, 4] |
-| `Storage:FileName` | Назва файлу каталогу товарів[cite: 2, 4] |
-| `Logging:MinimumLevel` | Поріг виводу логів[cite: 2] |
-| `Integration:ApiKey` | Секрет інтеграції (читається з user-secrets)[cite: 6] |
+| `EnvironmentName` | Поточне активне середовище |
+| `Storage:DataPath` | Шлях до каталогу з даними |
+| `Storage:FileName` | Назва файлу каталогу товарів |
+| `Logging:MinimumLevel` | Поріг виводу логів |
+| `Integration:ApiKey` | Секрет інтеграції (читається з user-secrets) |
 
-### Приклади запуску (зміна шляху через змінні середовища)
-- **PowerShell:**
-  ```powershell
-  $env:CROSSAPP_DATA_PATH="C:\data"; dotnet run --project src/Cli
-Bash:
-
-Bash
-CROSSAPP_DATA_PATH=/tmp/data dotnet run --project src/Cli
+- PowerShell: `$env:CROSSAPP_DATA_PATH="C:\data"; dotnet run --project src/Cli`
+- Bash: `CROSSAPP_DATA_PATH=/tmp/data dotnet run --project src/Cli`
 
 ## Лабораторна робота 10: Minimal API, CRUD, OpenAPI (Scalar)
 
-Запуск веб-сервісу API:
-```bash
-dotnet run --project src/Api --urls http://localhost:5080
-Документація OpenAPI: http://localhost:5080/openapi/v1.json
-
-Інтерфейс Scalar UI: http://localhost:5080/scalar/v1[cite: 1, 4]
-
-Приклад запиту через curl:
-Bash
-curl -i -X POST http://localhost:5080/api/products \
-  -H "Content-Type: application/json" \
-  -d '{"sku":"A-100","name":"Цемент М400","unit":"мішок","quantity":40}'
-
----
-
-### Звіт до лабораторної роботи №10
-
-1. **Таблиця маршрутів:**
-
-| Метод | Шлях | Тіло запиту (Request Body) | Коди відповідей (Response Status Codes) |
-| :--- | :--- | :--- | :--- |
-| **GET** | `/api/products` | — | `200 OK` |
-| **GET** | `/api/products/{id}` | — | `200 OK`, `404 Not Found` |
-| **GET** | `/api/products/low-stock?threshold=5` | — | `200 OK` |
-| **POST** | `/api/products` | `SaveProductRequest` (JSON) | `201 Created`, `400 Bad Request`[cite: 2] |
-| **PUT** | `/api/products/{id}` | `SaveProductRequest` (JSON) | `200 OK`, `404 Not Found`, `400 Bad Request` |
-| **DELETE** | `/api/products/{id}` | — | `204 No Content`, `404 Not Found`[cite: 2] |
-
-2. **Чому DTO окремо від доменної сутності:**
-   DTO (Data Transfer Object) повністю відокремлює зовнішній контракт HTTP-апі від внутрішньої доменної моделі. Це дозволяє захистити інваріанти сутностей, приховати приватні поля чи внутрішні зміни бази/структури даних і забезпечити стабільний JSON-контракт для клієнтів (наприклад, майбутнього Blazor-додатка)[cite: 1, 2].
-
-3. **Час життя сервісів у DI (Dependency Injection):**
-   - **Singleton:** Створюється один екземпляр сервісу на весь час роботи застосунку[cite: 2]. Ми обрали його для `InMemoryCatalogStore`, щоб збережений стан пам'яті (список товарів) не втрачався між різними HTTP-запитами.
-   - **Scoped:** Створюється один екземпляр на кожен окремий HTTP-запит[cite: 2].
-   - **Transient:** Новий екземпляр створюється щоразу при зверненні до контейнера[cite: 2].
+- Запуск веб-сервісу API: `dotnet run --project src/Api --urls http://localhost:5080`
+- Документація OpenAPI: `http://localhost:5080/openapi/v1.json`
+- Інтерфейс Scalar UI: `http://localhost:5080/scalar/v1`
 
 ## Лабораторна робота 11: EF Core + SQLite
 
-### Рядок підключення
-Конфігурація бази даних у файлі `appsettings.json`:
-```json
-"ConnectionStrings": {
-  "AppDb": "Data Source=data/app.db"
-}
-Команди міграцій EF Core
-Створити нову міграцію:
+- Рядок підключення у файлі `appsettings.json`: `"ConnectionStrings": { "AppDb": "Data Source=data/app.db" }`
+- Створити міграцію: `dotnet ef migrations add <MigrationName> --project src/Infrastructure --startup-project src/Api`
+- Застосувати міграції: `dotnet ef database update --project src/Infrastructure --startup-project src/Api`
 
-Bash
-dotnet ef migrations add <MigrationName> --project src/Infrastructure --startup-project src/Api
-Застосувати міграції до бази даних:
+## Лабораторна робота 12: Blazor-клієнт до власного API
 
-Bash
-dotnet ef database update --project src/Infrastructure --startup-project src/Api
-Як скинути базу даних
-Видалити файл бази даних вручну або через консоль: data/app.db.
+### Режим виконання та архітектура
+- Створено проєкт `src/Web` за шаблоном Blazor Web App (`.NET 10`) у режимі **InteractiveServer** (`@rendermode InteractiveServer`)[cite: 2, 3].
+- Код компонентів виконується на сервері процесу `src/Web`, оновлення інтерфейсу передаються у браузер через SignalR, а звернення до API через типізований `ProductsApiClient` (`HttpClient`) виконуються зі сторони сервера `Web` (`server-to-server`)[cite: 2, 3].
+- `src/Web` **не** має посилання на `Infrastructure` і **не** містить рядка підключення до бази даних; базові адреси задаються через конфігурацію[cite: 2, 3, 5].
+- Політику CORS (`Cors:WebOrigin`) додано в `src/Api` з `app.UseCors("web")` до `app.MapProducts()`: вона необхідна для браузерних клієнтів з іншим origin (наприклад, Blazor WebAssembly), тоді як при викликах з `InteractiveServer` запит до API йде із сервера `Web`[cite: 2, 3, 4].
 
-Повторно застосувати міграції для створення чистої структури:
+### Ключі конфігурації
+- `src/Web/appsettings.json`: `Api:BaseUrl` = `"http://localhost:5080"`[cite: 3, 4]
+- `src/Api/appsettings.json`: `Cors:WebOrigin` = `"http://localhost:5090"`[cite: 3, 4]
 
-Bash
-dotnet ef database update --project src/Infrastructure --startup-project src/Api
+### Запуск двох процесів
+- Термінал 1 (API на порту `5080`):
+  `dotnet run --project src/Api --urls http://localhost:5080`[cite: 3, 6]
+- Термінал 2 (Web на порту `5090`):
+  `dotnet run --project src/Web --urls http://localhost:5090`[cite: 3, 6]
+
+### Додаткові завдання
+- **Видалення з підтвердженням:** реалізовано підтвердження перед викликом `DELETE /api/products/{id}` і видалення елемента з локального списку без повного перезавантаження сторінки[cite: 10].
+- **Пошук і сортування на боці API:** параметри `search`, `sortBy` та `sortDir` обробляються в `GET /api/products` на стороні сервера[cite: 10].
+- **Спільний проєкт `src/Contracts`:** винесено контракти (`ProductDto`, `SaveProductRequest`, `PagedProductsResult`, `ApiResult`, `ValidationProblemResponse`) у `src/Contracts` для `Api` та `Web`[cite: 10].
+  - *Плюси зв'язування:* єдине джерело правди для структури DTO і полів, менше дублювання та помилок у назвах полів.
+  - *Мінуси зв'язування:* сильніша зв'язність (`coupling`) між сервером і клієнтом, ризик зламати обидва проєкти при зміні контракту, якщо API та Web розгортаються незалежно.
+- **Скасування запитів:** використовується `CancellationTokenSource` при зміні параметрів запиту та в `Dispose()` компонентів при швидкому переході між сторінками[cite: 10].

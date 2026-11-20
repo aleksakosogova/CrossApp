@@ -1,8 +1,7 @@
 using System.Security.Cryptography;
-using Api.Contracts;
+using Contracts;
 using Core.Abstractions;
 using Core.Domain;
-using Core.Dto;
 using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace Api.Endpoints;
@@ -13,41 +12,74 @@ public static class ProductEndpoints
     {
         var group = app.MapGroup("/api/products").WithTags("Products");
 
-        // GET зі структурою пагінації та пошуку (асинхронно)
-        group.MapGet("/", async (int? page, int? pageSize, string? search, IAsyncCatalogStore store, CancellationToken cancellationToken) =>
+        // GET з пошуком, сортуванням і пагінацією на боці API (асинхронно)
+        group.MapGet("/", async (
+            int? page,
+            int? pageSize,
+            string? search,
+            string? sortBy,
+            string? sortDir,
+            IAsyncCatalogStore store,
+            CancellationToken cancellationToken) =>
         {
             var products = await store.ListAsync(cancellationToken);
             var query = products.AsEnumerable();
 
             if (!string.IsNullOrWhiteSpace(search))
             {
-                query = query.Where(p => p.Name.Contains(search, StringComparison.OrdinalIgnoreCase) ||
-                                         p.Sku.Contains(search, StringComparison.OrdinalIgnoreCase));
+                query = query.Where(p =>
+                    p.Name.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                    p.Sku.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                    p.Unit.Contains(search, StringComparison.OrdinalIgnoreCase));
             }
 
+            bool desc = string.Equals(sortDir, "desc", StringComparison.OrdinalIgnoreCase);
+            query = (sortBy?.ToLowerInvariant()) switch
+            {
+                "name" => desc ? query.OrderByDescending(p => p.Name, StringComparer.OrdinalIgnoreCase) : query.OrderBy(p => p.Name, StringComparer.OrdinalIgnoreCase),
+                "quantity" => desc ? query.OrderByDescending(p => p.Quantity) : query.OrderBy(p => p.Quantity),
+                "unit" => desc ? query.OrderByDescending(p => p.Unit, StringComparer.OrdinalIgnoreCase) : query.OrderBy(p => p.Unit, StringComparer.OrdinalIgnoreCase),
+                _ => desc ? query.OrderByDescending(p => p.Sku, StringComparer.OrdinalIgnoreCase) : query.OrderBy(p => p.Sku, StringComparer.OrdinalIgnoreCase)
+            };
+
             var total = query.Count();
-            int pageNumber = page ?? 1;
-            int size = pageSize ?? 20;
+            int pageNumber = Math.Max(1, page ?? 1);
+            int size = Math.Clamp(pageSize ?? 50, 1, 200);
 
             var items = query
                 .Skip((pageNumber - 1) * size)
                 .Take(size)
-                .Select(p => p.ToDto())
+                .Select(p => new ProductDto
+                {
+                    Id = p.Id,
+                    Sku = p.Sku,
+                    Name = p.Name,
+                    Unit = p.Unit,
+                    Quantity = p.Quantity
+                })
                 .ToList();
 
-            return TypedResults.Ok(new { items, total, page = pageNumber, pageSize = size });
+            return TypedResults.Ok(new PagedProductsResult(items, total, pageNumber, size));
         });
 
         // GET за ID (асинхронно)
         group.MapGet("/{id}", async Task<Results<Ok<ProductDto>, NotFound>> (string id, IAsyncCatalogStore store, CancellationToken cancellationToken) =>
         {
             var found = await store.GetByIdAsync(id, cancellationToken);
-            return found is not null
-                ? TypedResults.Ok(found.ToDto())
-                : TypedResults.NotFound();
+            if (found is null)
+                return TypedResults.NotFound();
+
+            return TypedResults.Ok(new ProductDto
+            {
+                Id = found.Id,
+                Sku = found.Sku,
+                Name = found.Name,
+                Unit = found.Unit,
+                Quantity = found.Quantity
+            });
         });
 
-        // POST (асинхронно) з коректним TypedResults.Created для заголовка Location
+        // POST (асинхронно)
         group.MapPost("/", async Task<Results<Created<ProductDto>, BadRequest<string>>> (SaveProductRequest request, IAsyncCatalogStore store, CancellationToken cancellationToken) =>
         {
             try
@@ -56,7 +88,16 @@ public static class ProductEndpoints
                 var created = Product.Create(id, request.Sku, request.Name, request.Unit, request.Quantity);
                 await store.AddAsync(created, cancellationToken);
 
-                return TypedResults.Created($"/api/products/{created.Id}", created.ToDto());
+                var dto = new ProductDto
+                {
+                    Id = created.Id,
+                    Sku = created.Sku,
+                    Name = created.Name,
+                    Unit = created.Unit,
+                    Quantity = created.Quantity
+                };
+
+                return TypedResults.Created($"/api/products/{created.Id}", dto);
             }
             catch (ArgumentException ex)
             {
@@ -65,16 +106,32 @@ public static class ProductEndpoints
         });
 
         // PUT (асинхронно)
-        group.MapPut("/{id}", async Task<Results<Ok<ProductDto>, NotFound>> (string id, SaveProductRequest request, IAsyncCatalogStore store, CancellationToken cancellationToken) =>
+        group.MapPut("/{id}", async Task<Results<Ok<ProductDto>, NotFound, BadRequest<string>>> (string id, SaveProductRequest request, IAsyncCatalogStore store, CancellationToken cancellationToken) =>
         {
             var existing = await store.GetByIdAsync(id, cancellationToken);
             if (existing is null)
                 return TypedResults.NotFound();
 
-            var replacement = Product.Create(id, request.Sku, request.Name, request.Unit, request.Quantity);
-            await store.UpdateAsync(replacement, cancellationToken);
+            try
+            {
+                var replacement = Product.Create(id, request.Sku, request.Name, request.Unit, request.Quantity);
+                await store.UpdateAsync(replacement, cancellationToken);
 
-            return TypedResults.Ok(replacement.ToDto());
+                var dto = new ProductDto
+                {
+                    Id = replacement.Id,
+                    Sku = replacement.Sku,
+                    Name = replacement.Name,
+                    Unit = replacement.Unit,
+                    Quantity = replacement.Quantity
+                };
+
+                return TypedResults.Ok(dto);
+            }
+            catch (ArgumentException ex)
+            {
+                return TypedResults.BadRequest(ex.Message);
+            }
         });
 
         // DELETE (асинхронно)

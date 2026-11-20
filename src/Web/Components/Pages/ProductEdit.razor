@@ -1,0 +1,205 @@
+@page "/products/new"
+@page "/products/{Id}"
+@rendermode InteractiveServer
+@implements IDisposable
+@inject ProductsApiClient Api
+@inject NavigationManager Nav
+
+<PageTitle>@(IsEdit ? "Редагування товару" : "Новий товар")</PageTitle>
+
+<h1>@(IsEdit ? "Редагування товару" : "Новий товар")</h1>
+
+@if (loading)
+{
+    <p><em>Завантаження...</em></p>
+}
+else if (notFound)
+{
+    <div class="alert alert-warning" role="alert">
+        Товар із таким ідентифікатором не знайдено (404).
+    </div>
+    <a class="btn btn-secondary" href="/products">Повернутися до списку</a>
+}
+else
+{
+    @if (!string.IsNullOrWhiteSpace(generalError))
+    {
+        <div class="alert alert-danger" role="alert">@generalError</div>
+    }
+
+    <EditForm Model="model" OnValidSubmit="HandleValidSubmit" FormName="ProductForm">
+        <DataAnnotationsValidator />
+
+        <div class="mb-3">
+            <label class="form-label" for="sku">Артикул (SKU)</label>
+            <InputText id="sku" class="form-control" @bind-Value="model.Sku" />
+            <ValidationMessage For="@(() => model.Sku)" />
+            @foreach (var err in GetFieldErrors(nameof(model.Sku)))
+            {
+                <div class="text-danger small">@err</div>
+            }
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label" for="name">Назва</label>
+            <InputText id="name" class="form-control" @bind-Value="model.Name" />
+            <ValidationMessage For="@(() => model.Name)" />
+            @foreach (var err in GetFieldErrors(nameof(model.Name)))
+            {
+                <div class="text-danger small">@err</div>
+            }
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label" for="unit">Одиниця виміру</label>
+            <InputText id="unit" class="form-control" @bind-Value="model.Unit" />
+            <ValidationMessage For="@(() => model.Unit)" />
+            @foreach (var err in GetFieldErrors(nameof(model.Unit)))
+            {
+                <div class="text-danger small">@err</div>
+            }
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label" for="quantity">Кількість</label>
+            <InputNumber id="quantity" class="form-control" @bind-Value="model.Quantity" />
+            <ValidationMessage For="@(() => model.Quantity)" />
+            @foreach (var err in GetFieldErrors(nameof(model.Quantity)))
+            {
+                <div class="text-danger small">@err</div>
+            }
+        </div>
+
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary" disabled="@submitting">
+                @(submitting ? "Збереження..." : "Зберегти")
+            </button>
+            <a class="btn btn-outline-secondary" href="/products">Скасувати</a>
+        </div>
+    </EditForm>
+}
+
+@code {
+    [Parameter]
+    public string? Id { get; set; }
+
+    private bool IsEdit => !string.IsNullOrWhiteSpace(Id);
+
+    private global::Contracts.ProductDto model = new();
+    private Dictionary<string, string[]> serverErrors = new(StringComparer.OrdinalIgnoreCase);
+    private string? generalError;
+    private bool loading;
+    private bool notFound;
+    private bool submitting;
+    private CancellationTokenSource? _cts;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _cts = new CancellationTokenSource();
+        var token = _cts.Token;
+
+        generalError = null;
+        serverErrors.Clear();
+        notFound = false;
+
+        if (!IsEdit)
+        {
+            model = new global::Contracts.ProductDto();
+            return;
+        }
+
+        loading = true;
+        try
+        {
+            var existing = await Api.FindAsync(Id!, token);
+            if (token.IsCancellationRequested)
+                return;
+
+            if (existing is null)
+            {
+                notFound = true;
+            }
+            else
+            {
+                model = new global::Contracts.ProductDto
+                {
+                    Id = existing.Id,
+                    Sku = existing.Sku,
+                    Name = existing.Name,
+                    Unit = existing.Unit,
+                    Quantity = existing.Quantity
+                };
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (HttpRequestException)
+        {
+            if (!token.IsCancellationRequested)
+                generalError = "API недоступний. Перевірте, чи запущено src/Api.";
+        }
+        catch (Exception ex)
+        {
+            if (!token.IsCancellationRequested)
+                generalError = $"Помилка завантаження запису: {ex.Message}";
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private IEnumerable<string> GetFieldErrors(string fieldName)
+    {
+        if (serverErrors.TryGetValue(fieldName, out var list))
+            return list;
+
+        return [];
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        submitting = true;
+        generalError = null;
+        serverErrors.Clear();
+
+        try
+        {
+            var result = IsEdit
+                ? await Api.UpdateAsync(model, _cts?.Token ?? CancellationToken.None)
+                : await Api.CreateAsync(model, _cts?.Token ?? CancellationToken.None);
+
+            if (result.Ok)
+            {
+                Nav.NavigateTo("/products");
+                return;
+            }
+
+            generalError = result.Message;
+            if (result.Errors is not null)
+            {
+                serverErrors = new Dictionary<string, string[]>(result.Errors, StringComparer.OrdinalIgnoreCase);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (HttpRequestException)
+        {
+            generalError = "API недоступний. Перевірте, чи запущено src/Api.";
+        }
+        finally
+        {
+            submitting = false;
+        }
+    }
+
+    public void Dispose()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+    }
+}
