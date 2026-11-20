@@ -1,15 +1,9 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
 using System.Runtime.CompilerServices;
-using System.Threading;
-using System.Threading.Tasks;
 using Core;
 using Core.Abstractions;
 using Core.Domain;
 using Core.Services;
 using Core.Storage;
-using Xunit;
 
 public class CatalogServiceTests
 {
@@ -17,7 +11,7 @@ public class CatalogServiceTests
     public void Issue_WithExcessiveQuantity_Throws_AndKeepsState()
     {
         var product = Product.Create("id-1", "SKU-1", "Кабель", "м", 10);
-        
+
         Assert.Throws<InvalidOperationException>(() => product.Issue(15));
         Assert.Equal(10, product.Quantity);
     }
@@ -33,14 +27,14 @@ public class CatalogServiceTests
     {
         using var cts = new CancellationTokenSource();
         await cts.CancelAsync();
-        
+
         var importer = new JsonCatalogImporter();
         var tempFile = Path.GetTempFileName();
-        
+
         try
         {
             await File.WriteAllTextAsync(tempFile, "[]");
-            
+
             await Assert.ThrowsAnyAsync<OperationCanceledException>(
                 async () => await importer.LoadAsync(tempFile, cts.Token));
         }
@@ -58,7 +52,7 @@ public class CatalogServiceTests
         {
             await File.WriteAllTextAsync(tempFile, "[{\"Id\": \"1\", \"Sku\": \"\", \"Name\": \"Test\", \"Unit\": \"шт\", \"Quantity\": 5}]");
             var importer = new JsonCatalogImporter();
-            
+
             await Assert.ThrowsAsync<DomainException>(
                 async () => await importer.LoadAsync(tempFile));
         }
@@ -73,7 +67,7 @@ public class CatalogServiceTests
     {
         using var userCts = new CancellationTokenSource();
         using var timeoutCts = new CancellationTokenSource(TimeSpan.FromMilliseconds(5));
-        
+
         using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(userCts.Token, timeoutCts.Token);
 
         await Task.Delay(30);

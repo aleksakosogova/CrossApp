@@ -1,7 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
 using Core.Abstractions;
 using Core.Domain;
 
@@ -47,7 +43,7 @@ public sealed class CatalogService
     public async Task<int> ImportAsync(ICatalogImporter importer, string path, IProgress<int>? progress = null, CancellationToken ct = default)
     {
         if (importer == null) throw new ArgumentNullException(nameof(importer));
-        
+
         var items = await importer.LoadAsync(path, ct);
         var total = items.Count;
         var added = 0;
@@ -57,7 +53,7 @@ public sealed class CatalogService
             ct.ThrowIfCancellationRequested();
             var item = items[i];
 
-            if (_store.GetById(item.Id) is not null) 
+            if (_store.GetById(item.Id) is not null)
             {
                 progress?.Report((i + 1) * 100 / total);
                 continue;
@@ -86,7 +82,7 @@ public sealed class CatalogService
             processed++;
             ct.ThrowIfCancellationRequested();
 
-            if (_store.GetById(item.Id) is not null) 
+            if (_store.GetById(item.Id) is not null)
             {
                 progress?.Report(processed);
                 continue;

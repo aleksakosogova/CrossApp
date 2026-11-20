@@ -1,5 +1,3 @@
-using System;
-
 namespace Core.Events;
 
 public sealed class OrderChangedEventArgs : EventArgs

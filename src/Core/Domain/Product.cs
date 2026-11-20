@@ -26,13 +26,13 @@ public sealed class Product
     {
         if (string.IsNullOrWhiteSpace(id))
             throw new ArgumentException("Ідентифікатор обов'язковий", nameof(id));
-        
+
         if (string.IsNullOrWhiteSpace(sku))
             throw new ArgumentException("SKU не може бути порожнім", nameof(sku));
-        
+
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("Назва не може бути порожньою", nameof(name));
-        
+
         if (quantity < 0)
             throw new ArgumentOutOfRangeException(nameof(quantity), quantity, "Початковий залишок не може бути від'ємним");
 

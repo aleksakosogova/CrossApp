@@ -3,7 +3,6 @@ using Infrastructure;
 using Infrastructure.Persistence;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using Xunit;
 
 namespace Core.Tests;
 

@@ -3,7 +3,6 @@ using System.Net.Http.Json;
 using Api.Contracts;
 using Core.Dto;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Xunit;
 
 namespace Api.Tests;
 

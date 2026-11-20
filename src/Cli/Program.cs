@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using Core.Domain;
 using Infrastructure;
 using Infrastructure.Persistence;
@@ -37,7 +37,7 @@ Console.WriteLine("Виконується імпорт даних із JSON у �
 try
 {
     var jsonString = File.ReadAllText(jsonPath);
-    
+
     var dtos = JsonSerializer.Deserialize<List<ImportProductDto>>(jsonString, new JsonSerializerOptions
     {
         PropertyNameCaseInsensitive = true

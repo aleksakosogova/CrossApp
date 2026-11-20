@@ -53,7 +53,7 @@ public class FileCatalogStore : ICatalogStore
     {
         if (_loaded) return;
         if (!File.Exists(_path)) { _loaded = true; return; }
-        
+
         _cache.Clear();
 
         if (_path.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))

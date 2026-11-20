@@ -47,9 +47,9 @@ public static class ProductCsvImporter
         {
             { Length: < 5 } => new ParseFailed($"очікую 5 колонок, отримав {parts.Length}"),
             [_, "", _, _, _] or [_, _, "", _, _] => new ParseFailed("SKU або назва порожні"),
-            [_, _, _, _, var qty] when !int.TryParse(qty, NumberStyles.Integer, CultureInfo.InvariantCulture, out int q) || q < 0 
+            [_, _, _, _, var qty] when !int.TryParse(qty, NumberStyles.Integer, CultureInfo.InvariantCulture, out int q) || q < 0
                 => new ParseFailed($"кількість '{qty}' не є невід'ємним числом"),
-            [var id, var sku, var name, var unit, var qty] 
+            [var id, var sku, var name, var unit, var qty]
                 => new ParseOk(new ProductDto(id, sku, name, unit, int.Parse(qty, CultureInfo.InvariantCulture))),
             _ => new ParseFailed($"занадто багато колонок: {parts.Length}")
         };

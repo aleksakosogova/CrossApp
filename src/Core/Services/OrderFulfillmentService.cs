@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using Core.Domain;
 using Core.Events;
 using Core.Sinks;
@@ -44,11 +41,11 @@ public class OrderFulfillmentService
         // Піднімаємо подію ТІЛЬКИ після успішної зміни
         OnChanged(order, product, OrderChangeKind.OrderConfirmed, -order.RequestedQuantity);
     }
-    
+
     // Крок 7: Func замість події для отримання значення
     public IReadOnlyList<Order> FindAll(IEnumerable<Order> orders, Func<Order, bool> predicate) =>
         orders.Where(predicate).ToList();
-// Додаткове завдання 2: Action<string> як параметр методу імпорту
+    // Додаткове завдання 2: Action<string> як параметр методу імпорту
     public void ImportOrders(string[] data, Action<string> onLineSkipped)
     {
         foreach (var line in data)

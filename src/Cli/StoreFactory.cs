@@ -1,7 +1,8 @@
 namespace Cli;
+
+using Core;
 using Core.Abstractions;
 using Core.Storage;
-using Core;
 
 public static class StoreFactory
 {

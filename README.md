@@ -4,22 +4,38 @@
 
 Предметна область: Замовлення. Сутності: Customer (клієнт), Product (товар), Order (замовлення), OrderLine (рядок замовлення). Призначення: оформлення замовлень і підрахунок сум.
 
+## Архітектура та напрямок залежностей (Лабораторна робота 13)
+
+- `Core` нічого з наших проєктів не використовує (без EF Core, ASP.NET та SQL).
+- `Infrastructure` -> `Core` (реалізація сховищ на EF Core / SQLite, `AppDbContext`, міграції).
+- `Api` -> `Core`, `Infrastructure`, `Contracts` (Minimal API, DI, `ProblemDetails`, мапінг).
+- `Cli` -> `Core` (та `Infrastructure`, якщо читає ту саму БД / виконує імпорт).
+- `Web` -> лише HTTP-контракт API (`Contracts` / `HttpClient`), без посилань на `Infrastructure` та БД.
+- `Core.Tests` -> `Core` (модульні тести доменної логіки).
+
+### Команди міграцій EF Core
+
+- Створити міграцію:
+  `dotnet ef migrations add <MigrationName> --project src/Infrastructure --startup-project src/Api`
+- Застосувати міграції:
+  `dotnet ef database update --project src/Infrastructure --startup-project src/Api`
+
 ## Запуск та збірка
 
 - Збірка: `dotnet build`
 - Запуск консольного застосування: `dotnet run --project src/Cli`
 - Запуск із виводом у форматі JSON (додаткове завдання): `dotnet run --project src/Cli -- --json`
-- Середовище: `.NET SDK 10.0`, Windows 11 x64
+- Середовище: .NET SDK 10.0, Windows 11 x64
 
 ## Додаткове завдання (Розміри publish)
 
-- Розмір каталогу `publish` для `win-x64`: `76,8 МБ`
-- Розмір каталогу `publish` для `linux-x64`: `78,7 МБ`
+- Розмір каталогу publish для win-x64: 76,8 МБ
+- Розмір каталогу publish для linux-x64: 78,7 МБ
 
 | RID | Режим | Розмір publish | Потрібен runtime |
 | :--- | :--- | :--- | :--- |
-| `win-x64` | `self-contained` | `~76.8 МБ` | ні |
-| `win-x64` | `framework-dependent` | `~196 КБ` | так (.NET 10) |
+| win-x64 | self-contained | ~76.8 МБ | ні |
+| win-x64 | framework-dependent | ~196 КБ | так (.NET 10) |
 
 ## Лабораторна робота 4: Доменна модель (Сутності, інваріанти, інкапсуляція)
 
@@ -43,6 +59,9 @@
 
 - `appsettings.json` — базові налаштування (шляхи до сховища, назва файлу, логування).
 - `appsettings.Development.json` — налаштування для середовища розробки.
+- Змінні середовища:
+  - PowerShell: `$env:CROSSAPP_DATA_PATH="C:\data"; dotnet run --project src/Cli`
+  - Bash: `CROSSAPP_DATA_PATH=/tmp/data dotnet run --project src/Cli`
 
 | Ключ | Опис |
 | :--- | :--- |
@@ -51,9 +70,6 @@
 | `Storage:FileName` | Назва файлу каталогу товарів |
 | `Logging:MinimumLevel` | Поріг виводу логів |
 | `Integration:ApiKey` | Секрет інтеграції (читається з user-secrets) |
-
-- PowerShell: `$env:CROSSAPP_DATA_PATH="C:\data"; dotnet run --project src/Cli`
-- Bash: `CROSSAPP_DATA_PATH=/tmp/data dotnet run --project src/Cli`
 
 ## Лабораторна робота 10: Minimal API, CRUD, OpenAPI (Scalar)
 
@@ -69,26 +85,20 @@
 
 ## Лабораторна робота 12: Blazor-клієнт до власного API
 
-### Режим виконання та архітектура
-- Створено проєкт `src/Web` за шаблоном Blazor Web App (`.NET 10`) у режимі **InteractiveServer** (`@rendermode InteractiveServer`)[cite: 2, 3].
-- Код компонентів виконується на сервері процесу `src/Web`, оновлення інтерфейсу передаються у браузер через SignalR, а звернення до API через типізований `ProductsApiClient` (`HttpClient`) виконуються зі сторони сервера `Web` (`server-to-server`)[cite: 2, 3].
-- `src/Web` **не** має посилання на `Infrastructure` і **не** містить рядка підключення до бази даних; базові адреси задаються через конфігурацію[cite: 2, 3, 5].
-- Політику CORS (`Cors:WebOrigin`) додано в `src/Api` з `app.UseCors("web")` до `app.MapProducts()`: вона необхідна для браузерних клієнтів з іншим origin (наприклад, Blazor WebAssembly), тоді як при викликах з `InteractiveServer` запит до API йде із сервера `Web`[cite: 2, 3, 4].
+- Створено проєкт `src/Web` за шаблоном Blazor Web App (.NET 10) у режимі `InteractiveServer` (`@rendermode InteractiveServer`).
+- Код компонентів виконується на сервері процесу `src/Web`, оновлення інтерфейсу передаються у браузер через SignalR, а звернення до API через типізований `ProductsApiClient` (`HttpClient`) виконуються зі сторони сервера Web (server-to-server).
+- `src/Web` не має посилання на `Infrastructure` і не містить рядка підключення до бази даних; базові адреси задаються через конфігурацію.
+- Політику CORS (`Cors:WebOrigin`) додано в `src/Api` з `app.UseCors("web")` до `app.MapProducts()`.
+- Ключі конфігурації:
+  - `src/Web/appsettings.json`: `Api:BaseUrl = "http://localhost:5080"`
+  - `src/Api/appsettings.json`: `Cors:WebOrigin = "http://localhost:5090"`
+- Запуск двох процесів:
+  - Термінал 1 (API на порту 5080): `dotnet run --project src/Api --urls http://localhost:5080`
+  - Термінал 2 (Web на порту 5090): `dotnet run --project src/Web --urls http://localhost:5090`
 
-### Ключі конфігурації
-- `src/Web/appsettings.json`: `Api:BaseUrl` = `"http://localhost:5080"`[cite: 3, 4]
-- `src/Api/appsettings.json`: `Cors:WebOrigin` = `"http://localhost:5090"`[cite: 3, 4]
+### Додаткові завдання (Лаба 12)
 
-### Запуск двох процесів
-- Термінал 1 (API на порту `5080`):
-  `dotnet run --project src/Api --urls http://localhost:5080`[cite: 3, 6]
-- Термінал 2 (Web на порту `5090`):
-  `dotnet run --project src/Web --urls http://localhost:5090`[cite: 3, 6]
-
-### Додаткові завдання
-- **Видалення з підтвердженням:** реалізовано підтвердження перед викликом `DELETE /api/products/{id}` і видалення елемента з локального списку без повного перезавантаження сторінки[cite: 10].
-- **Пошук і сортування на боці API:** параметри `search`, `sortBy` та `sortDir` обробляються в `GET /api/products` на стороні сервера[cite: 10].
-- **Спільний проєкт `src/Contracts`:** винесено контракти (`ProductDto`, `SaveProductRequest`, `PagedProductsResult`, `ApiResult`, `ValidationProblemResponse`) у `src/Contracts` для `Api` та `Web`[cite: 10].
-  - *Плюси зв'язування:* єдине джерело правди для структури DTO і полів, менше дублювання та помилок у назвах полів.
-  - *Мінуси зв'язування:* сильніша зв'язність (`coupling`) між сервером і клієнтом, ризик зламати обидва проєкти при зміні контракту, якщо API та Web розгортаються незалежно.
-- **Скасування запитів:** використовується `CancellationTokenSource` при зміні параметрів запиту та в `Dispose()` компонентів при швидкому переході між сторінками[cite: 10].
+- Видалення з підтвердженням: реалізовано підтвердження перед викликом `DELETE /api/products/{id}` і видалення елемента з локального списку без повного перезавантаження сторінки.
+- Пошук і сортування на боці API: параметри `search`, `sortBy` та `sortDir` обробляються в `GET /api/products` на стороні сервера.
+- Спільний проєкт `src/Contracts`: винесено контракти (`ProductDto`, `SaveProductRequest`, `PagedProductsResult`, `ApiResult`, `ValidationProblemResponse`) у `src/Contracts` для Api та Web.
+- Скасування запитів: використовується `CancellationTokenSource` при зміні параметрів запиту та в `Dispose()` компонентів при швидкому переході між сторінками.

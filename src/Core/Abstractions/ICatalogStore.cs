@@ -1,4 +1,5 @@
 namespace Core.Abstractions;
+
 using Core.Domain;
 
 public interface ICatalogStore

@@ -1,5 +1,3 @@
-using System;
-
 namespace Core;
 
 public sealed class DomainException : Exception

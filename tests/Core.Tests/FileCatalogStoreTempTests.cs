@@ -1,6 +1,5 @@
 using Core.Domain;
 using Core.Storage;
-using Xunit;
 
 namespace Core.Tests;
 
@@ -23,7 +22,7 @@ public class FileCatalogStoreTempTests : IDisposable
         // Arrange
         var store1 = new FileCatalogStore(_filePath);
         var product = Product.Create("id-1", "SKU-001", "Тестовий товар", "шт", 15);
-        
+
         // Act
         store1.Add(product);
 

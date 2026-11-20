@@ -13,7 +13,7 @@ public sealed class GlobalExceptionHandler : IExceptionHandler
         if (exception is InvalidOperationException or ArgumentException)
         {
             httpContext.Response.StatusCode = StatusCodes.Status409Conflict;
-            
+
             var problemDetails = new ProblemDetails
             {
                 Status = StatusCodes.Status409Conflict,

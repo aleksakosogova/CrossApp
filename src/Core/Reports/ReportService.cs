@@ -1,8 +1,5 @@
-using Core.Domain;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
+using Core.Domain;
 
 namespace Core.Reports;
 
@@ -37,9 +34,9 @@ public static class ReportService
         var list = source.ToList();
         return list.Count == 0
             ? (0, 0, 0d, 0)
-            : (list.Count, 
-               list.Sum(p => p.Quantity), 
-               list.Average(p => p.Quantity), 
+            : (list.Count,
+               list.Sum(p => p.Quantity),
+               list.Average(p => p.Quantity),
                list.Max(p => p.Quantity));
     }
 
