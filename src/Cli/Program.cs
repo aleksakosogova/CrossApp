@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Cli;
 using Core.Domain;
 using Infrastructure;
 using Infrastructure.Persistence;
@@ -37,11 +38,12 @@ Console.WriteLine("Виконується імпорт даних із JSON у �
 try
 {
     var jsonString = File.ReadAllText(jsonPath);
-
-    var dtos = JsonSerializer.Deserialize<List<ImportProductDto>>(jsonString, new JsonSerializerOptions
+    var serializerOptions = new JsonSerializerOptions
     {
         PropertyNameCaseInsensitive = true
-    });
+    };
+
+    var dtos = JsonSerializer.Deserialize<List<ImportProductDto>>(jsonString, serializerOptions);
 
     if (dtos != null)
     {
@@ -71,12 +73,15 @@ catch (Exception ex)
     }
 }
 
-// DTO для десеріалізації
-public class ImportProductDto
+namespace Cli
 {
-    public string Sku { get; set; } = string.Empty;
-    public string Name { get; set; } = string.Empty;
-    public string Unit { get; set; } = string.Empty;
-    public string Description { get; set; } = string.Empty;
-    public int Quantity { get; set; }
+    // DTO для десеріалізації
+    public class ImportProductDto
+    {
+        public string Sku { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public string Unit { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public int Quantity { get; set; }
+    }
 }

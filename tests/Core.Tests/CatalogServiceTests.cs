@@ -1,9 +1,10 @@
 using System.Runtime.CompilerServices;
-using Core;
 using Core.Abstractions;
 using Core.Domain;
 using Core.Services;
 using Core.Storage;
+
+namespace Core.Tests;
 
 public class CatalogServiceTests
 {

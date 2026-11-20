@@ -10,8 +10,12 @@ public static class ProductEndpoints
 {
     public static void MapProducts(this WebApplication app)
     {
-        var group = app.MapGroup("/api/products").WithTags("Products");
+        MapProductGroup(app.MapGroup("/api/v1/products").WithTags("Products v1"));
+        MapProductGroup(app.MapGroup("/api/products").WithTags("Products"));
+    }
 
+    private static void MapProductGroup(RouteGroupBuilder group)
+    {
         // GET з пошуком, сортуванням і пагінацією на боці API (асинхронно)
         group.MapGet("/", async (
             int? page,
@@ -63,11 +67,16 @@ public static class ProductEndpoints
         });
 
         // GET за ID (асинхронно)
-        group.MapGet("/{id}", async Task<Results<Ok<ProductDto>, NotFound>> (string id, IAsyncCatalogStore store, CancellationToken cancellationToken) =>
+        group.MapGet("/{id}", async Task<Results<Ok<ProductDto>, ProblemHttpResult>> (string id, IAsyncCatalogStore store, CancellationToken cancellationToken) =>
         {
             var found = await store.GetByIdAsync(id, cancellationToken);
             if (found is null)
-                return TypedResults.NotFound();
+            {
+                return TypedResults.Problem(
+                    statusCode: StatusCodes.Status404NotFound,
+                    title: "Item not found",
+                    detail: $"Product with id '{id}' was not found.");
+            }
 
             return TypedResults.Ok(new ProductDto
             {
@@ -97,7 +106,7 @@ public static class ProductEndpoints
                     Quantity = created.Quantity
                 };
 
-                return TypedResults.Created($"/api/products/{created.Id}", dto);
+                return TypedResults.Created($"/api/v1/products/{created.Id}", dto);
             }
             catch (ArgumentException ex)
             {
@@ -109,11 +118,16 @@ public static class ProductEndpoints
         });
 
         // PUT (асинхронно)
-        group.MapPut("/{id}", async Task<Results<Ok<ProductDto>, NotFound, ProblemHttpResult>> (string id, SaveProductRequest request, IAsyncCatalogStore store, CancellationToken cancellationToken) =>
+        group.MapPut("/{id}", async Task<Results<Ok<ProductDto>, ProblemHttpResult>> (string id, SaveProductRequest request, IAsyncCatalogStore store, CancellationToken cancellationToken) =>
         {
             var existing = await store.GetByIdAsync(id, cancellationToken);
             if (existing is null)
-                return TypedResults.NotFound();
+            {
+                return TypedResults.Problem(
+                    statusCode: StatusCodes.Status404NotFound,
+                    title: "Item not found",
+                    detail: $"Product with id '{id}' was not found.");
+            }
 
             try
             {
@@ -141,12 +155,18 @@ public static class ProductEndpoints
         });
 
         // DELETE (асинхронно)
-        group.MapDelete("/{id}", async Task<Results<NoContent, NotFound>> (string id, IAsyncCatalogStore store, CancellationToken cancellationToken) =>
+        group.MapDelete("/{id}", async Task<Results<NoContent, ProblemHttpResult>> (string id, IAsyncCatalogStore store, CancellationToken cancellationToken) =>
         {
             var success = await store.RemoveAsync(id, cancellationToken);
-            return success
-                ? TypedResults.NoContent()
-                : TypedResults.NotFound();
+            if (!success)
+            {
+                return TypedResults.Problem(
+                    statusCode: StatusCodes.Status404NotFound,
+                    title: "Item not found",
+                    detail: $"Product with id '{id}' was not found.");
+            }
+
+            return TypedResults.NoContent();
         });
     }
 }

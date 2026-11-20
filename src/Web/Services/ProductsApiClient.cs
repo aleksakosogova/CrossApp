@@ -6,6 +6,11 @@ namespace Web.Services;
 
 public sealed class ProductsApiClient(HttpClient http)
 {
+    private static readonly JsonSerializerOptions SerializerOptions = new()
+    {
+        PropertyNameCaseInsensitive = true
+    };
+
     public async Task<List<global::Contracts.ProductDto>> ListAsync(
         string? search = null,
         string? sortBy = null,
@@ -32,16 +37,10 @@ public sealed class ProductsApiClient(HttpClient http)
         using var doc = JsonDocument.Parse(raw);
         if (doc.RootElement.ValueKind == JsonValueKind.Array)
         {
-            return doc.RootElement.Deserialize<List<global::Contracts.ProductDto>>(new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            }) ?? [];
+            return doc.RootElement.Deserialize<List<global::Contracts.ProductDto>>(SerializerOptions) ?? [];
         }
 
-        var paged = doc.RootElement.Deserialize<PagedProductsResult>(new JsonSerializerOptions
-        {
-            PropertyNameCaseInsensitive = true
-        });
+        var paged = doc.RootElement.Deserialize<PagedProductsResult>(SerializerOptions);
 
         return paged?.Items ?? [];
     }
@@ -102,22 +101,20 @@ public sealed class ProductsApiClient(HttpClient http)
             if (response.IsSuccessStatusCode)
                 return new global::Contracts.ApiResult(true);
 
+            var body = await response.Content.ReadAsStringAsync(ct);
+
             if (response.StatusCode == HttpStatusCode.NotFound)
-                return new global::Contracts.ApiResult(false, "Запис не знайдено — можливо, його вже видалили.");
+                return new global::Contracts.ApiResult(false, ExtractProblemMessage(body) ?? "Запис не знайдено — можливо, його вже видалили.");
 
             if (response.StatusCode == HttpStatusCode.Conflict)
-                return new global::Contracts.ApiResult(false, "Конфлікт даних (409 Conflict): операція суперечить поточному стану.");
+                return new global::Contracts.ApiResult(false, ExtractProblemMessage(body) ?? "Конфлікт даних (409 Conflict): операція суперечить поточному стану.");
 
             if (response.StatusCode != HttpStatusCode.BadRequest)
-                return new global::Contracts.ApiResult(false, $"Сервер повернув {(int)response.StatusCode}.");
+                return new global::Contracts.ApiResult(false, ExtractProblemMessage(body) ?? $"Сервер повернув {(int)response.StatusCode}.");
 
-            var body = await response.Content.ReadAsStringAsync(ct);
             try
             {
-                var problem = JsonSerializer.Deserialize<ValidationProblemResponse>(body, new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true
-                });
+                var problem = JsonSerializer.Deserialize<ValidationProblemResponse>(body, SerializerOptions);
 
                 if (problem?.Errors is { Count: > 0 })
                 {
@@ -132,9 +129,8 @@ public sealed class ProductsApiClient(HttpClient http)
             {
             }
 
-            var message = string.IsNullOrWhiteSpace(body)
-                ? "Дані не пройшли перевірку."
-                : body.Trim('"');
+            var message = ExtractProblemMessage(body)
+                ?? (string.IsNullOrWhiteSpace(body) ? "Дані не пройшли перевірку." : body.Trim('"'));
 
             return new global::Contracts.ApiResult(false, message);
         }
@@ -146,5 +142,29 @@ public sealed class ProductsApiClient(HttpClient http)
         {
             return new global::Contracts.ApiResult(false, "API недоступний. Перевірте, чи запущено src/Api.");
         }
+    }
+
+    private static string? ExtractProblemMessage(string body)
+    {
+        if (string.IsNullOrWhiteSpace(body))
+            return null;
+
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            if (doc.RootElement.ValueKind != JsonValueKind.Object)
+                return null;
+
+            if (doc.RootElement.TryGetProperty("detail", out var detail) && detail.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(detail.GetString()))
+                return detail.GetString();
+
+            if (doc.RootElement.TryGetProperty("title", out var title) && title.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(title.GetString()))
+                return title.GetString();
+        }
+        catch (JsonException)
+        {
+        }
+
+        return null;
     }
 }

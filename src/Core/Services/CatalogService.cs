@@ -42,7 +42,7 @@ public sealed class CatalogService
     // Базовий асинхронний імпорт із підтримкою IProgress<int> (Додаткове завдання 3)
     public async Task<int> ImportAsync(ICatalogImporter importer, string path, IProgress<int>? progress = null, CancellationToken ct = default)
     {
-        if (importer == null) throw new ArgumentNullException(nameof(importer));
+        ArgumentNullException.ThrowIfNull(importer);
 
         var items = await importer.LoadAsync(path, ct);
         var total = items.Count;
@@ -72,7 +72,7 @@ public sealed class CatalogService
     // Додаткове завдання 1: Потоковий імпорт через await foreach з IProgress
     public async Task<int> ImportStreamAsync(ICatalogImporter importer, string path, IProgress<int>? progress = null, CancellationToken ct = default)
     {
-        if (importer == null) throw new ArgumentNullException(nameof(importer));
+        ArgumentNullException.ThrowIfNull(importer);
 
         var added = 0;
         int processed = 0;

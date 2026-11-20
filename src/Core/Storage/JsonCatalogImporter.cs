@@ -8,6 +8,11 @@ namespace Core.Storage;
 
 public sealed class JsonCatalogImporter : ICatalogImporter
 {
+    private static readonly JsonSerializerOptions SerializerOptions = new()
+    {
+        PropertyNameCaseInsensitive = true
+    };
+
     public async Task<IReadOnlyList<Product>> LoadAsync(string path, CancellationToken ct = default)
     {
         await using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, useAsync: true);
@@ -36,7 +41,7 @@ public sealed class JsonCatalogImporter : ICatalogImporter
     {
         await using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, useAsync: true);
 
-        var dtos = JsonSerializer.DeserializeAsyncEnumerable<ProductDto>(stream, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }, cancellationToken: ct);
+        var dtos = JsonSerializer.DeserializeAsyncEnumerable<ProductDto>(stream, SerializerOptions, cancellationToken: ct);
 
         int index = 0;
         await foreach (var dto in dtos.WithCancellation(ct))

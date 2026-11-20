@@ -6,6 +6,7 @@ using Core.Dto;
 
 namespace Core.Storage;
 
+[Obsolete("Замінено EfCatalogStore у lab11. Зберігається для сумісності та тестів.")]
 public class FileCatalogStore : ICatalogStore
 {
     private readonly string _path;
@@ -104,19 +105,19 @@ public class FileCatalogStore : ICatalogStore
         return _cache.TryGetValue(id, out var product) ? product : null;
     }
 
-    public void Add(Product product)
+    public void Add(Product item)
     {
         EnsureLoaded();
-        _cache[product.Id] = product;
+        _cache[item.Id] = item;
         Flush();
     }
 
-    public void Update(Product product)
+    public void Update(Product item)
     {
         EnsureLoaded();
-        if (_cache.ContainsKey(product.Id))
+        if (_cache.ContainsKey(item.Id))
         {
-            _cache[product.Id] = product;
+            _cache[item.Id] = item;
             Flush();
         }
     }

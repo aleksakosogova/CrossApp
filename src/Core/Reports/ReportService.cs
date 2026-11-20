@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using Core.Domain;
 
 namespace Core.Reports;
@@ -62,7 +63,7 @@ public static class ReportService
     public static string MeasurePerformance(int count)
     {
         var randomProducts = Enumerable.Range(1, count)
-            .Select(i => Product.Create(i.ToString(), $"SKU-{i:00000}", $"Товар {i}", "шт", i % 50))
+            .Select(i => Product.Create(i.ToString(CultureInfo.InvariantCulture), $"SKU-{i:00000}", $"Товар {i}", "шт", i % 50))
             .ToList();
 
         var sw = Stopwatch.StartNew();
@@ -71,7 +72,7 @@ public static class ReportService
         var timeWithoutIntermediate = sw.ElapsedMilliseconds;
 
         sw.Restart();
-        var _2 = randomProducts.Where(p => p.Quantity < 10).ToList().Where(p => p.Name.Contains("1")).ToList();
+        var _2 = randomProducts.Where(p => p.Quantity < 10).ToList().Where(p => p.Name.Contains('1')).ToList();
         sw.Stop();
         var timeWithIntermediate = sw.ElapsedMilliseconds;
 

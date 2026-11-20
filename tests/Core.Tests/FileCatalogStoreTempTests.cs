@@ -1,9 +1,10 @@
+#pragma warning disable CS0618
 using Core.Domain;
 using Core.Storage;
 
 namespace Core.Tests;
 
-public class FileCatalogStoreTempTests : IDisposable
+public sealed class FileCatalogStoreTempTests : IDisposable
 {
     private readonly string _tempDirectory;
     private readonly string _filePath;
@@ -45,5 +46,7 @@ public class FileCatalogStoreTempTests : IDisposable
         {
             Directory.Delete(_tempDirectory, recursive: true);
         }
+
+        GC.SuppressFinalize(this);
     }
 }

@@ -17,3 +17,9 @@ csharp_style_namespace_declarations = file_scoped:suggestion
 dotnet_sort_system_directives_first = true
 dotnet_diagnostic.CA1001.severity = warning
 dotnet_diagnostic.IDE0005.severity = warning
+
+[tests/**/*.cs]
+dotnet_diagnostic.CA1707.severity = none
+
+[**/Migrations/*.cs]
+dotnet_diagnostic.CA1861.severity = none
