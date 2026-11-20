@@ -80,7 +80,7 @@ public static class ProductEndpoints
         });
 
         // POST (асинхронно)
-        group.MapPost("/", async Task<Results<Created<ProductDto>, BadRequest<string>>> (SaveProductRequest request, IAsyncCatalogStore store, CancellationToken cancellationToken) =>
+        group.MapPost("/", async Task<Results<Created<ProductDto>, ProblemHttpResult>> (SaveProductRequest request, IAsyncCatalogStore store, CancellationToken cancellationToken) =>
         {
             try
             {
@@ -101,12 +101,15 @@ public static class ProductEndpoints
             }
             catch (ArgumentException ex)
             {
-                return TypedResults.BadRequest(ex.Message);
+                return TypedResults.Problem(
+                    statusCode: StatusCodes.Status400BadRequest,
+                    title: "Invalid Product Data",
+                    detail: ex.Message);
             }
         });
 
         // PUT (асинхронно)
-        group.MapPut("/{id}", async Task<Results<Ok<ProductDto>, NotFound, BadRequest<string>>> (string id, SaveProductRequest request, IAsyncCatalogStore store, CancellationToken cancellationToken) =>
+        group.MapPut("/{id}", async Task<Results<Ok<ProductDto>, NotFound, ProblemHttpResult>> (string id, SaveProductRequest request, IAsyncCatalogStore store, CancellationToken cancellationToken) =>
         {
             var existing = await store.GetByIdAsync(id, cancellationToken);
             if (existing is null)
@@ -130,7 +133,10 @@ public static class ProductEndpoints
             }
             catch (ArgumentException ex)
             {
-                return TypedResults.BadRequest(ex.Message);
+                return TypedResults.Problem(
+                    statusCode: StatusCodes.Status400BadRequest,
+                    title: "Invalid Product Data",
+                    detail: ex.Message);
             }
         });
 

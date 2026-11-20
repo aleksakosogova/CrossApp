@@ -1,4 +1,6 @@
+using System.Text.Json;
 using Api.Endpoints;
+using Api.Middleware;
 using Core.Abstractions;
 using Infrastructure;
 using Infrastructure.Persistence;
@@ -7,6 +9,16 @@ using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Явний camelCase для JSON на рівні HTTP API
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+    options.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+});
+
+// Єдиний формат помилок ProblemDetails + глобальний обробник винятків
+builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
 // Конфігурація рядка підключення з абсолютним шляхом
 var raw = builder.Configuration.GetConnectionString("AppDb") ?? "Data Source=data/app.db";
@@ -50,6 +62,9 @@ builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
+
+app.UseExceptionHandler();
+app.UseStatusCodePages();
 
 // Автоматичне застосування міграцій при старті
 using (var scope = app.Services.CreateScope())

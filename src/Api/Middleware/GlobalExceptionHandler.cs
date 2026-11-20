@@ -1,30 +1,62 @@
+using Core;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Api.Middleware;
 
-public sealed class GlobalExceptionHandler : IExceptionHandler
+public sealed class GlobalExceptionHandler(IHostEnvironment environment) : IExceptionHandler
 {
     public async ValueTask<bool> TryHandleAsync(
         HttpContext httpContext,
         Exception exception,
         CancellationToken cancellationToken)
     {
-        if (exception is InvalidOperationException or ArgumentException)
+        var (statusCode, title, detail) = exception switch
         {
-            httpContext.Response.StatusCode = StatusCodes.Status409Conflict;
+            DomainException => (
+                StatusCodes.Status409Conflict,
+                "Domain Rule Violation",
+                exception.Message),
 
-            var problemDetails = new ProblemDetails
-            {
-                Status = StatusCodes.Status409Conflict,
-                Title = "Domain Conflict / Business Rule Violation",
-                Detail = exception.Message
-            };
+            InvalidOperationException => (
+                StatusCodes.Status409Conflict,
+                "Conflict",
+                exception.Message),
 
-            await httpContext.Response.WriteAsJsonAsync(problemDetails, cancellationToken);
-            return true;
+            ArgumentOutOfRangeException => (
+                StatusCodes.Status400BadRequest,
+                "Invalid Range",
+                exception.Message),
+
+            ArgumentException => (
+                StatusCodes.Status400BadRequest,
+                "Invalid Argument",
+                exception.Message),
+
+            _ => (
+                StatusCodes.Status500InternalServerError,
+                "Internal Server Error",
+                environment.IsDevelopment()
+                    ? exception.Message
+                    : "An unexpected error occurred.")
+        };
+
+        httpContext.Response.StatusCode = statusCode;
+
+        var problemDetails = new ProblemDetails
+        {
+            Status = statusCode,
+            Title = title,
+            Detail = detail,
+            Instance = httpContext.Request.Path
+        };
+
+        if (environment.IsDevelopment() && statusCode == StatusCodes.Status500InternalServerError)
+        {
+            problemDetails.Extensions["exceptionType"] = exception.GetType().FullName;
         }
 
-        return false;
+        await httpContext.Response.WriteAsJsonAsync(problemDetails, cancellationToken);
+        return true;
     }
 }
